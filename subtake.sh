@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 #
 # SubTake Flow - Advanced Subdomain Takeover Scanner
-# https://github.com/YOUR_USERNAME/subtake-flow
+# https://github.com/W4RRR/subtake
 #
 # A professional-grade subdomain takeover detection tool
 # with intelligent heuristics and low false-positive rates.
 #
-# Author: Your Name
+# Author: .W4R
 # License: MIT
 #
 
-set -euo pipefail
+set -uo pipefail
+
+# Error handling - show where the script failed
+trap 'echo -e "\n\033[0;31m[ERROR] Script failed at line $LINENO: $BASH_COMMAND\033[0m" >&2' ERR
 
 # ============================================================================
 #                              CONFIGURATION
@@ -62,6 +65,9 @@ readonly SYMBOL_FIRE="${YELLOW}🔥${RESET}"
 # ============================================================================
 
 show_banner() {
+    # Skip banner in silent mode
+    [[ "${SILENT:-0}" == "1" ]] && return
+    
     echo -e "${CYAN}"
     cat << 'EOF'
    _____       __  ______      __
@@ -74,7 +80,7 @@ show_banner() {
  / /_  / / __ \ | /| / /
 / __/ / / /_/ / |/ |/ /
 /_/   /_/\____/|__/|__/
-
+                        by .W4R
 EOF
     echo -e "${RESET}"
     echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
@@ -95,6 +101,18 @@ log() {
     local timestamp
     timestamp="$(date '+%H:%M:%S')"
     
+    # Always log to file if RUNLOG is set
+    [[ -n "${RUNLOG:-}" ]] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $msg" >> "$RUNLOG"
+    
+    # Silent mode: only show VULN, ERROR and final summary
+    if [[ "${SILENT:-0}" == "1" ]]; then
+        case "$level" in
+            VULN)    echo -e "${DIM}[${timestamp}]${RESET} ${SYMBOL_SKULL} ${BG_RED}${WHITE}${BOLD} VULNERABLE ${RESET} $msg" ;;
+            ERROR)   echo -e "${DIM}[${timestamp}]${RESET} ${SYMBOL_FAIL} ${RED}$msg${RESET}" ;;
+        esac
+        return
+    fi
+    
     case "$level" in
         INFO)    echo -e "${DIM}[${timestamp}]${RESET} ${SYMBOL_INFO} $msg" ;;
         OK)      echo -e "${DIM}[${timestamp}]${RESET} ${SYMBOL_OK} ${GREEN}$msg${RESET}" ;;
@@ -104,24 +122,31 @@ log() {
         HIGH)    echo -e "${DIM}[${timestamp}]${RESET} ${SYMBOL_FIRE} ${YELLOW}${BOLD}HIGH PROBABILITY${RESET} $msg" ;;
         STEP)    echo -e "\n${BOLD}${BLUE}▶ STEP $msg${RESET}" ;;
         DEBUG)   [[ "${DEBUG:-0}" == "1" ]] && echo -e "${DIM}[${timestamp}] [DEBUG] $msg${RESET}" ;;
+        VERBOSE) [[ "${VERBOSE:-0}" == "1" ]] && echo -e "${DIM}[${timestamp}] [VERBOSE] $msg${RESET}" ;;
     esac
-    
-    # Also log to file if RUNLOG is set
-    [[ -n "${RUNLOG:-}" ]] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $msg" >> "$RUNLOG"
 }
 
 progress_bar() {
+    # Skip in silent mode
+    [[ "${SILENT:-0}" == "1" ]] && return
+    
     local current="$1"
     local total="$2"
     local width=40
+    
+    # Avoid division by zero
+    [[ $total -eq 0 ]] && total=1
+    
     local percent=$((current * 100 / total))
     local filled=$((current * width / total))
     local empty=$((width - filled))
     
+    local bar_filled="" bar_empty=""
+    [[ $filled -gt 0 ]] && bar_filled="$(printf '%*s' "$filled" '' | tr ' ' '#')"
+    [[ $empty -gt 0 ]] && bar_empty="$(printf '%*s' "$empty" '' | tr ' ' '-')"
+    
     printf "\r${DIM}[${RESET}${GREEN}%s${RESET}${DIM}%s${RESET}${DIM}]${RESET} ${BOLD}%3d%%${RESET} ${DIM}(%d/%d)${RESET}" \
-        "$(printf '#%.0s' $(seq 1 $filled 2>/dev/null) 2>/dev/null || true)" \
-        "$(printf '-%.0s' $(seq 1 $empty 2>/dev/null) 2>/dev/null || true)" \
-        "$percent" "$current" "$total"
+        "$bar_filled" "$bar_empty" "$percent" "$current" "$total"
 }
 
 # ============================================================================
@@ -153,25 +178,34 @@ check_dependency() {
 
 check_all_dependencies() {
     log INFO "Checking required dependencies..."
-    echo
     
     local required=(dig curl jq openssl)
     local optional=(subfinder amass httpx subzy parallel)
     local missing_required=0
     local missing_optional=0
     
-    echo -e "${BOLD}Required:${RESET}"
-    for tool in "${required[@]}"; do
-        check_dependency "$tool" || ((missing_required++))
-    done
-    
-    echo
-    echo -e "${BOLD}Optional (enhanced functionality):${RESET}"
-    for tool in "${optional[@]}"; do
-        check_dependency "$tool" || ((missing_optional++))
-    done
-    
-    echo
+    # In silent mode, only check without printing
+    if [[ "${SILENT:-0}" == "1" ]]; then
+        for tool in "${required[@]}"; do
+            command -v "$tool" &>/dev/null || missing_required=$((missing_required + 1))
+        done
+        for tool in "${optional[@]}"; do
+            command -v "$tool" &>/dev/null || missing_optional=$((missing_optional + 1))
+        done
+    else
+        echo
+        echo -e "${BOLD}Required:${RESET}"
+        for tool in "${required[@]}"; do
+            check_dependency "$tool" || missing_required=$((missing_required + 1))
+        done
+        
+        echo
+        echo -e "${BOLD}Optional (enhanced functionality):${RESET}"
+        for tool in "${optional[@]}"; do
+            check_dependency "$tool" || missing_optional=$((missing_optional + 1))
+        done
+        echo
+    fi
     
     if [[ $missing_required -gt 0 ]]; then
         log ERROR "Missing $missing_required required dependencies. Please install them first."
@@ -403,16 +437,19 @@ get_cname_chain() {
     
     while [[ $depth -lt $max_depth ]]; do
         local cname
-        cname="$(resolve_cname "$current" "$resolvers")"
+        cname="$(resolve_cname "$current" "$resolvers" 2>/dev/null || true)"
         
         [[ -z "$cname" ]] && break
         
         chain+=("$cname")
         current="$cname"
-        ((depth++))
+        depth=$((depth + 1))
     done
     
-    printf '%s\n' "${chain[@]}"
+    # Only print if chain has elements
+    if [[ ${#chain[@]} -gt 0 ]]; then
+        printf '%s\n' "${chain[@]}"
+    fi
 }
 
 # Get final A record
@@ -618,15 +655,17 @@ resolve_all_dns() {
     # Process with progress indicator
     local count=0
     local found=0
-    while IFS= read -r subdomain; do
-        ((count++))
+    while IFS= read -r subdomain || [[ -n "$subdomain" ]]; do
+        count=$((count + 1))
         
-        # Show progress with current subdomain
-        printf "\r${DIM}[%d/%d]${RESET} Resolving: ${CYAN}%-50s${RESET}" "$count" "$total" "${subdomain:0:50}"
+        # Show progress with current subdomain (unless silent)
+        if [[ "${SILENT:-0}" != "1" ]]; then
+            printf "\r${DIM}[%d/%d]${RESET} Resolving: ${CYAN}%-50s${RESET}" "$count" "$total" "${subdomain:0:50}"
+        fi
         
         local cname_chain a_record
-        cname_chain="$(get_cname_chain "$subdomain" 5 "$resolvers" | paste -sd ',' -)"
-        a_record="$(resolve_a "$subdomain" "$resolvers")"
+        cname_chain="$(get_cname_chain "$subdomain" 5 "$resolvers" | paste -sd ',' - 2>/dev/null || true)"
+        a_record="$(resolve_a "$subdomain" "$resolvers" 2>/dev/null || true)"
         
         # Only include entries with CNAME (potential takeover targets)
         if [[ -n "$cname_chain" ]]; then
@@ -635,12 +674,18 @@ resolve_all_dns() {
             provider="$(provider_from_cname "$final_cname")"
             
             printf "%s\t%s\t%s\t%s\n" "$subdomain" "$cname_chain" "${a_record:-NXDOMAIN}" "$provider" >> "$output"
-            ((found++))
+            found=$((found + 1))
+            
+            # Verbose: show each CNAME found
+            log VERBOSE "CNAME found: $subdomain -> $cname_chain ($provider)"
         fi
     done < "$input"
     
-    # Clear line and show final status
-    printf "\r%-80s\r" " "
+    # Clear line and show final status (unless silent)
+    if [[ "${SILENT:-0}" != "1" ]]; then
+        printf "\r%-80s\r" " "
+        echo
+    fi
     
     local count_with_cname
     count_with_cname="$(wc -l < "$output" | tr -d ' ')"
@@ -700,37 +745,37 @@ calculate_probability() {
     
     # Factor 1: Known vulnerable provider
     if [[ "$provider" != "Unknown" ]]; then
-        ((score += 30))
+        score=$((score + 30))
         reasons+=("Known provider: $provider")
     fi
     
     # Factor 2: NXDOMAIN on CNAME target
     if [[ "$is_nxdomain" == "true" ]]; then
-        ((score += 35))
+        score=$((score + 35))
         reasons+=("CNAME target is NXDOMAIN")
     fi
     
     # Factor 3: HTTP response indicates takeover
     case "$http_code" in
         404)
-            ((score += 15))
+            score=$((score + 15))
             reasons+=("HTTP 404 response")
             ;;
         502|503)
-            ((score += 20))
+            score=$((score + 20))
             reasons+=("HTTP $http_code (backend error)")
             ;;
         000)
-            ((score += 10))
+            score=$((score + 10))
             reasons+=("No HTTP response")
             ;;
     esac
     
     # Factor 4: Fingerprint match
     local fingerprint
-    fingerprint="$(get_fingerprint "$cname")"
+    fingerprint="$(get_fingerprint "$cname" 2>/dev/null || true)"
     if [[ -n "$fingerprint" ]] && [[ "$body_content" =~ $fingerprint ]]; then
-        ((score += 40))
+        score=$((score + 40))
         reasons+=("Fingerprint matched: $fingerprint")
     fi
     
@@ -738,7 +783,9 @@ calculate_probability() {
     [[ $score -gt 100 ]] && score=100
     
     # Return score and reasons
-    printf "%d\t%s\n" "$score" "$(IFS=';'; echo "${reasons[*]}")"
+    local reasons_str=""
+    [[ ${#reasons[@]} -gt 0 ]] && reasons_str="$(IFS=';'; echo "${reasons[*]}")"
+    printf "%d\t%s\n" "$score" "$reasons_str"
 }
 
 # ============================================================================
@@ -828,7 +875,7 @@ run_deep_verification() {
         # Sequential fallback
         local count=0
         while IFS=$'\t' read -r subdomain cname_chain a_record provider; do
-            ((count++))
+            count=$((count + 1))
             progress_bar "$count" "$total"
             verify_candidate "$subdomain" "$cname_chain" "$provider" >> "$output"
         done < "$input"
@@ -1165,7 +1212,7 @@ HTMLROW
         </table>
         
         <footer class="footer">
-            <p>Generated by SubTake Flow v2.0.0 | https://github.com/YOUR_USERNAME/subtake-flow</p>
+            <p>Generated by SubTake Flow v2.0.0 | https://github.com/W4RRR/subtake</p>
         </footer>
     </div>
     
@@ -1205,15 +1252,38 @@ HTMLFOOT
 print_summary() {
     local results_file="$1"
     
+    # Vulnerable findings
+    local vuln_results
+    vuln_results="$(grep "VULNERABLE" "$results_file" 2>/dev/null || true)"
+    
+    # High probability findings
+    local high_results
+    high_results="$(grep $'\tHIGH\t' "$results_file" 2>/dev/null || true)"
+    
+    # Silent mode: minimal output
+    if [[ "${SILENT:-0}" == "1" ]]; then
+        if [[ -n "$vuln_results" ]]; then
+            echo -e "\n${BG_RED}${WHITE}${BOLD} VULNERABLE ${RESET}"
+            while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
+                echo -e "  ${RED}☠${RESET} $subdomain -> $cname ($provider)"
+            done <<< "$vuln_results"
+        fi
+        if [[ -n "$high_results" ]]; then
+            echo -e "\n${YELLOW}${BOLD}HIGH PROBABILITY:${RESET}"
+            while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
+                echo -e "  ${YELLOW}●${RESET} $subdomain"
+            done <<< "$high_results"
+        fi
+        [[ -z "$vuln_results" ]] && [[ -z "$high_results" ]] && echo -e "${GREEN}No vulnerabilities found${RESET}"
+        return
+    fi
+    
+    # Normal/Verbose mode
     echo
     echo -e "${BOLD}${WHITE}═══════════════════════════════════════════════════════════════${RESET}"
     echo -e "${BOLD}${WHITE}                        SCAN SUMMARY                           ${RESET}"
     echo -e "${BOLD}${WHITE}═══════════════════════════════════════════════════════════════${RESET}"
     echo
-    
-    # Vulnerable findings
-    local vuln_results
-    vuln_results="$(grep "VULNERABLE" "$results_file" 2>/dev/null || true)"
     
     if [[ -n "$vuln_results" ]]; then
         echo -e "${BG_RED}${WHITE}${BOLD} ☠  VULNERABLE SUBDOMAINS FOUND ${RESET}"
@@ -1223,15 +1293,13 @@ print_summary() {
             echo -e "    ${DIM}CNAME:${RESET} $cname"
             echo -e "    ${DIM}Provider:${RESET} $provider"
             echo -e "    ${DIM}Score:${RESET} ${score}%"
+            # Verbose: show reasons
+            [[ "${VERBOSE:-0}" == "1" ]] && [[ -n "$reasons" ]] && echo -e "    ${DIM}Reasons:${RESET} $reasons"
             echo
         done <<< "$vuln_results"
     else
         echo -e "${GREEN}${BOLD}✓ No confirmed vulnerabilities found${RESET}"
     fi
-    
-    # High probability findings
-    local high_results
-    high_results="$(grep $'\tHIGH\t' "$results_file" 2>/dev/null || true)"
     
     if [[ -n "$high_results" ]]; then
         echo
@@ -1239,7 +1307,22 @@ print_summary() {
         echo
         while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
             echo -e "  ${YELLOW}●${RESET} $subdomain ${DIM}($provider, ${score}%)${RESET}"
+            # Verbose: show more details
+            [[ "${VERBOSE:-0}" == "1" ]] && echo -e "    ${DIM}CNAME: $cname${RESET}"
         done <<< "$high_results"
+    fi
+    
+    # Verbose: show medium findings too
+    if [[ "${VERBOSE:-0}" == "1" ]]; then
+        local medium_results
+        medium_results="$(grep $'\tMEDIUM\t' "$results_file" 2>/dev/null || true)"
+        if [[ -n "$medium_results" ]]; then
+            echo
+            echo -e "${BLUE}${BOLD}MEDIUM PROBABILITY:${RESET}"
+            while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
+                echo -e "  ${BLUE}●${RESET} $subdomain ${DIM}($provider, ${score}%)${RESET}"
+            done <<< "$medium_results"
+        fi
     fi
     
     echo
@@ -1273,9 +1356,11 @@ ${BOLD}OPTIONS:${RESET}
     ${CYAN}-f, --fingerprints${RESET} <f>   Custom fingerprints YAML file
     ${CYAN}--skip-enum${RESET}              Skip subdomain enumeration (requires -s)
     ${CYAN}--skip-subzy${RESET}             Skip subzy automated scan
+    ${CYAN}-v, --verbose${RESET}            Enable verbose output (show more details)
+    ${CYAN}-q, --quiet, --silent${RESET}    Silent mode (only show vulnerabilities and errors)
     ${CYAN}--debug${RESET}                  Enable debug output
     ${CYAN}-h, --help${RESET}               Show this help message
-    ${CYAN}-v, --version${RESET}            Show version
+    ${CYAN}--version${RESET}                Show version
 
 ${BOLD}EXAMPLES:${RESET}
     ${DIM}# Basic scan${RESET}
@@ -1300,7 +1385,7 @@ ${BOLD}OUTPUT:${RESET}
     - ${CYAN}scan.log${RESET}          Detailed scan log
 
 ${BOLD}MORE INFO:${RESET}
-    https://github.com/YOUR_USERNAME/subtake-flow
+    https://github.com/W4RRR/subtake
 
 EOF
 }
@@ -1319,6 +1404,8 @@ parse_args() {
     SKIP_ENUM=false
     SKIP_SUBZY=false
     DEBUG=0
+    VERBOSE=0
+    SILENT=0
     DOMAIN=""
     
     while [[ $# -gt 0 ]]; do
@@ -1363,11 +1450,19 @@ parse_args() {
                 DEBUG=1
                 shift
                 ;;
+            -v|--verbose)
+                VERBOSE=1
+                shift
+                ;;
+            -q|--quiet|--silent)
+                SILENT=1
+                shift
+                ;;
             -h|--help)
                 show_help
                 exit 0
                 ;;
-            -v|--version)
+            --version)
                 echo "SubTake Flow v${VERSION}"
                 exit 0
                 ;;
@@ -1399,8 +1494,15 @@ parse_args() {
         exit 1
     fi
     
+    # Verbose and silent are mutually exclusive
+    if [[ "$VERBOSE" == "1" ]] && [[ "$SILENT" == "1" ]]; then
+        log WARN "Cannot use --verbose and --silent together. Using normal mode."
+        VERBOSE=0
+        SILENT=0
+    fi
+    
     # Export for subshells
-    export TIMEOUT THREADS RESOLVERS DEBUG
+    export TIMEOUT THREADS RESOLVERS DEBUG VERBOSE SILENT
 }
 
 # ============================================================================
