@@ -5,6 +5,10 @@
 <h1 align="center">🔥 SubTake Flow</h1>
 
 <p align="center">
+  <em>by .W4R</em>
+</p>
+
+<p align="center">
   <strong>Advanced Subdomain Takeover Scanner with Intelligent Heuristics</strong>
 </p>
 
@@ -36,6 +40,7 @@
  / /_  / / __ \ | /| / /
 / __/ / / /_/ / |/ |/ /
 /_/   /_/\____/|__/|__/
+                        by .W4R
 ```
 
 ## 🎯 What is SubTake Flow?
