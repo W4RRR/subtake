@@ -1337,57 +1337,55 @@ print_summary() {
 show_help() {
     show_banner
     
-    cat << EOF
-${BOLD}USAGE:${RESET}
-    $0 [OPTIONS] <domain>
-
-${BOLD}DESCRIPTION:${RESET}
-    SubTake Flow is an advanced subdomain takeover detection tool with
-    intelligent heuristics designed to minimize false positives while
-    maximizing detection of vulnerable subdomains.
-
-${BOLD}OPTIONS:${RESET}
-    ${CYAN}-o, --output${RESET} <dir>       Output directory (default: ./subtake_<domain>)
-    ${CYAN}-t, --timeout${RESET} <sec>      HTTP timeout in seconds (default: ${DEFAULT_TIMEOUT})
-    ${CYAN}-j, --threads${RESET} <num>      Number of parallel threads (default: ${DEFAULT_THREADS})
-    ${CYAN}-r, --resolvers${RESET} <list>   Comma-separated DNS resolvers (default: ${DEFAULT_RESOLVERS})
-    ${CYAN}-w, --wordlist${RESET} <file>    Custom wordlist for subdomain bruteforce
-    ${CYAN}-s, --subdomains${RESET} <file>  Use existing subdomain list instead of enumeration
-    ${CYAN}-f, --fingerprints${RESET} <f>   Custom fingerprints YAML file
-    ${CYAN}--skip-enum${RESET}              Skip subdomain enumeration (requires -s)
-    ${CYAN}--skip-subzy${RESET}             Skip subzy automated scan
-    ${CYAN}-v, --verbose${RESET}            Enable verbose output (show more details)
-    ${CYAN}-q, --quiet, --silent${RESET}    Silent mode (only show vulnerabilities and errors)
-    ${CYAN}--debug${RESET}                  Enable debug output
-    ${CYAN}-h, --help${RESET}               Show this help message
-    ${CYAN}--version${RESET}                Show version
-
-${BOLD}EXAMPLES:${RESET}
-    ${DIM}# Basic scan${RESET}
-    $0 example.com
-
-    ${DIM}# Custom output and threads${RESET}
-    $0 -o /tmp/results -j 20 example.com
-
-    ${DIM}# Use existing subdomain list${RESET}
-    $0 -s subdomains.txt --skip-enum example.com
-
-    ${DIM}# With custom wordlist${RESET}
-    $0 -w wordlist.txt example.com
-
-${BOLD}OUTPUT:${RESET}
-    The tool generates the following files:
-    - ${CYAN}subdomains.txt${RESET}    Raw subdomain list
-    - ${CYAN}dns_resolved.tsv${RESET}  DNS resolution with CNAMEs
-    - ${CYAN}results.tsv${RESET}       Final verification results
-    - ${CYAN}results.json${RESET}      JSON format results
-    - ${CYAN}report.html${RESET}       Interactive HTML report
-    - ${CYAN}scan.log${RESET}          Detailed scan log
-
-${BOLD}MORE INFO:${RESET}
-    https://github.com/W4RRR/subtake
-
-EOF
+    echo -e "${BOLD}USAGE:${RESET}"
+    echo "    $0 [OPTIONS] <domain>"
+    echo
+    echo -e "${BOLD}DESCRIPTION:${RESET}"
+    echo "    SubTake Flow is an advanced subdomain takeover detection tool with"
+    echo "    intelligent heuristics designed to minimize false positives while"
+    echo "    maximizing detection of vulnerable subdomains."
+    echo
+    echo -e "${BOLD}OPTIONS:${RESET}"
+    echo -e "    ${CYAN}-o, --output${RESET} <dir>       Output directory (default: ./subtake_<domain>)"
+    echo -e "    ${CYAN}-t, --timeout${RESET} <sec>      HTTP timeout in seconds (default: ${DEFAULT_TIMEOUT})"
+    echo -e "    ${CYAN}-j, --threads${RESET} <num>      Number of parallel threads (default: ${DEFAULT_THREADS})"
+    echo -e "    ${CYAN}-r, --resolvers${RESET} <list>   Comma-separated DNS resolvers (default: ${DEFAULT_RESOLVERS})"
+    echo -e "    ${CYAN}-w, --wordlist${RESET} <file>    Custom wordlist for subdomain bruteforce"
+    echo -e "    ${CYAN}-s, --subdomains${RESET} <file>  Use existing subdomain list instead of enumeration"
+    echo -e "    ${CYAN}-f, --fingerprints${RESET} <f>   Custom fingerprints YAML file"
+    echo -e "    ${CYAN}--skip-enum${RESET}              Skip subdomain enumeration (requires -s)"
+    echo -e "    ${CYAN}--skip-subzy${RESET}             Skip subzy automated scan"
+    echo -e "    ${CYAN}-v, --verbose${RESET}            Enable verbose output (show more details)"
+    echo -e "    ${CYAN}-q, --quiet, --silent${RESET}    Silent mode (only show vulnerabilities and errors)"
+    echo -e "    ${CYAN}--debug${RESET}                  Enable debug output"
+    echo -e "    ${CYAN}-h, --help${RESET}               Show this help message"
+    echo -e "    ${CYAN}--version${RESET}                Show version"
+    echo
+    echo -e "${BOLD}EXAMPLES:${RESET}"
+    echo -e "    ${DIM}# Basic scan${RESET}"
+    echo "    $0 example.com"
+    echo
+    echo -e "    ${DIM}# Custom output and threads${RESET}"
+    echo "    $0 -o /tmp/results -j 20 example.com"
+    echo
+    echo -e "    ${DIM}# Use existing subdomain list${RESET}"
+    echo "    $0 -s subdomains.txt --skip-enum example.com"
+    echo
+    echo -e "    ${DIM}# With custom wordlist${RESET}"
+    echo "    $0 -w wordlist.txt example.com"
+    echo
+    echo -e "${BOLD}OUTPUT:${RESET}"
+    echo "    The tool generates the following files:"
+    echo -e "    - ${CYAN}subdomains.txt${RESET}    Raw subdomain list"
+    echo -e "    - ${CYAN}dns_resolved.tsv${RESET}  DNS resolution with CNAMEs"
+    echo -e "    - ${CYAN}results.tsv${RESET}       Final verification results"
+    echo -e "    - ${CYAN}results.json${RESET}      JSON format results"
+    echo -e "    - ${CYAN}report.html${RESET}       Interactive HTML report"
+    echo -e "    - ${CYAN}scan.log${RESET}          Detailed scan log"
+    echo
+    echo -e "${BOLD}MORE INFO:${RESET}"
+    echo "    https://github.com/W4RRR/subtake"
+    echo
 }
 
 # ============================================================================
