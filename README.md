@@ -347,6 +347,7 @@ If you find this project useful and want to support its development, you can tip
 ```
 sp1qqdsmxsvc6payn6kxmyjuwk6zcjcq7vpgkek7tf3y78tfaksahacxcqenuvqptufl7a6gwtwe5zdsf4pu578ykfdtxp789ca4nxgcawp4057852s6
 ```
+![bitcoin-github-QR](https://github.com/user-attachments/assets/9768054a-19c0-48fb-b799-090aad40f82c)
 
 Silent Payments let the recipient publish **one static address** for donations, while each payment is derived into a **fresh, unique on-chain output** (so the static address itself doesn't show up on-chain), improving privacy for both sides.
 
@@ -374,4 +375,5 @@ For the most up-to-date list of wallets (and whether they support send/receive),
   <a href="https://github.com/W4RRR/subtake/issues">🐛 Report Bug</a> •
   <a href="https://github.com/W4RRR/subtake/pulls">🔀 Submit PR</a>
 </p>
+
 
