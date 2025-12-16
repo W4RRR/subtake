@@ -152,6 +152,12 @@ sudo ln -s $(pwd)/subtake.sh /usr/local/bin/subtake
 # Custom DNS resolvers
 ./subtake.sh -r "1.1.1.1,8.8.8.8,9.9.9.9" example.com
 
+# Verbose mode (show more details)
+./subtake.sh -v example.com
+
+# Silent mode (only show vulnerabilities)
+./subtake.sh -q example.com
+
 # Debug mode
 ./subtake.sh --debug example.com
 ```
@@ -169,6 +175,8 @@ sudo ln -s $(pwd)/subtake.sh /usr/local/bin/subtake
 | `-f, --fingerprints <file>` | Custom fingerprints YAML | `fingerprints.yaml` |
 | `--skip-enum` | Skip subdomain enumeration | - |
 | `--skip-subzy` | Skip automated subzy scan | - |
+| `-v, --verbose` | Verbose output (show more details) | - |
+| `-q, --quiet, --silent` | Silent mode (only vulnerabilities) | - |
 | `--debug` | Enable debug output | - |
 
 ---
