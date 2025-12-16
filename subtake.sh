@@ -388,7 +388,7 @@ resolve_cname() {
     resolver="${resolvers%%,*}"
     
     # Get CNAME chain (following all CNAMEs)
-    dig +short +norecurse +tries=2 +time=5 CNAME "$host" "@$resolver" 2>/dev/null | \
+    dig +short +norecurse +tries=1 +time=3 CNAME "$host" "@$resolver" 2>/dev/null | \
         head -n1 | sed 's/\.$//'
 }
 
@@ -421,7 +421,7 @@ resolve_a() {
     local resolvers="${2:-$DEFAULT_RESOLVERS}"
     local resolver="${resolvers%%,*}"
     
-    dig +short +tries=2 +time=5 A "$host" "@$resolver" 2>/dev/null | head -n1
+    dig +short +tries=1 +time=3 A "$host" "@$resolver" 2>/dev/null | head -n1
 }
 
 # Check if domain resolves to NXDOMAIN
@@ -431,7 +431,7 @@ is_nxdomain() {
     local resolver="${resolvers%%,*}"
     
     local result
-    result="$(dig +short +tries=2 +time=5 "$host" "@$resolver" 2>&1)"
+    result="$(dig +short +tries=1 +time=3 "$host" "@$resolver" 2>&1)"
     
     [[ -z "$result" ]] || [[ "$result" == *"NXDOMAIN"* ]] || [[ "$result" == *"SERVFAIL"* ]]
 }
@@ -608,14 +608,21 @@ resolve_all_dns() {
     
     log STEP "2/5: DNS Resolution & CNAME Extraction"
     
-    local total count=0
+    local total
     total="$(wc -l < "$input" | tr -d ' ')"
     
     > "$output"
     
+    log INFO "Resolving DNS for ${BOLD}$total${RESET} subdomains..."
+    
+    # Process with progress indicator
+    local count=0
+    local found=0
     while IFS= read -r subdomain; do
         ((count++))
-        progress_bar "$count" "$total"
+        
+        # Show progress with current subdomain
+        printf "\r${DIM}[%d/%d]${RESET} Resolving: ${CYAN}%-50s${RESET}" "$count" "$total" "${subdomain:0:50}"
         
         local cname_chain a_record
         cname_chain="$(get_cname_chain "$subdomain" 5 "$resolvers" | paste -sd ',' -)"
@@ -628,10 +635,12 @@ resolve_all_dns() {
             provider="$(provider_from_cname "$final_cname")"
             
             printf "%s\t%s\t%s\t%s\n" "$subdomain" "$cname_chain" "${a_record:-NXDOMAIN}" "$provider" >> "$output"
+            ((found++))
         fi
     done < "$input"
     
-    echo  # Newline after progress bar
+    # Clear line and show final status
+    printf "\r%-80s\r" " "
     
     local count_with_cname
     count_with_cname="$(wc -l < "$output" | tr -d ' ')"
