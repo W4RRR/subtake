@@ -1,0 +1,780 @@
+# SubTake Flow - Fingerprints Database
+# 
+# This file contains known vulnerable cloud service fingerprints
+# for subdomain takeover detection.
+#
+# Format:
+#   - cname: "pattern to match in CNAME"
+#     provider: "Service Name"
+#     fingerprint: "Error message pattern (regex)"
+#     status: "vulnerable|edge_case|not_vulnerable"
+#     docs: "URL to documentation"
+#
+# Sources:
+#   - https://github.com/EdOverflow/can-i-take-over-xyz
+#   - https://0xpatrik.com/subdomain-takeover/
+#
+# Last updated: 2024-12-16
+
+fingerprints:
+
+  # ============================================================================
+  # AWS Services
+  # ============================================================================
+  
+  - cname: "s3.amazonaws.com"
+    provider: "AWS S3"
+    fingerprint: "NoSuchBucket|The specified bucket does not exist"
+    status: "vulnerable"
+    docs: "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingBucket.html"
+
+  - cname: "s3-website"
+    provider: "AWS S3 Website"
+    fingerprint: "NoSuchBucket|The specified bucket does not exist"
+    status: "vulnerable"
+
+  - cname: "elasticbeanstalk.com"
+    provider: "AWS Elastic Beanstalk"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+    docs: "https://docs.aws.amazon.com/elasticbeanstalk/"
+
+  - cname: "cloudfront.net"
+    provider: "AWS CloudFront"
+    fingerprint: "The request could not be satisfied|Bad Request|ERROR: The request could not be satisfied"
+    status: "edge_case"
+    docs: "https://docs.aws.amazon.com/cloudfront/"
+
+  - cname: "elb.amazonaws.com"
+    provider: "AWS ELB"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  - cname: "awsglobalaccelerator.com"
+    provider: "AWS Global Accelerator"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Microsoft Azure
+  # ============================================================================
+  
+  - cname: "azurewebsites.net"
+    provider: "Azure Web Apps"
+    fingerprint: "404 Web Site not found|Error 404 - Web app not found"
+    status: "vulnerable"
+    docs: "https://docs.microsoft.com/azure/app-service/"
+
+  - cname: "cloudapp.azure.com"
+    provider: "Azure Cloud App"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  - cname: "cloudapp.net"
+    provider: "Azure Cloud App (Legacy)"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  - cname: "blob.core.windows.net"
+    provider: "Azure Blob Storage"
+    fingerprint: "The specified resource does not exist|BlobNotFound"
+    status: "vulnerable"
+    docs: "https://docs.microsoft.com/azure/storage/blobs/"
+
+  - cname: "azure-api.net"
+    provider: "Azure API Management"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  - cname: "azureedge.net"
+    provider: "Azure CDN"
+    fingerprint: "404 Not Found|<h1>404 Not Found</h1>"
+    status: "vulnerable"
+
+  - cname: "azurefd.net"
+    provider: "Azure Front Door"
+    fingerprint: "Our services aren't available right now"
+    status: "vulnerable"
+
+  - cname: "azurecontainer.io"
+    provider: "Azure Container Instances"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  - cname: "database.windows.net"
+    provider: "Azure SQL Database"
+    fingerprint: "NXDOMAIN"
+    status: "not_vulnerable"
+
+  - cname: "trafficmanager.net"
+    provider: "Azure Traffic Manager"
+    fingerprint: "NXDOMAIN"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Google Cloud Platform
+  # ============================================================================
+  
+  - cname: "storage.googleapis.com"
+    provider: "Google Cloud Storage"
+    fingerprint: "The specified bucket does not exist|NoSuchBucket"
+    status: "vulnerable"
+    docs: "https://cloud.google.com/storage/docs"
+
+  - cname: "appspot.com"
+    provider: "Google App Engine"
+    fingerprint: "Error: Not Found|The requested URL was not found on this server"
+    status: "vulnerable"
+    docs: "https://cloud.google.com/appengine/docs"
+
+  - cname: "cloudfunctions.net"
+    provider: "Google Cloud Functions"
+    fingerprint: "Error: could not handle the request"
+    status: "not_vulnerable"
+
+  - cname: "run.app"
+    provider: "Google Cloud Run"
+    fingerprint: "NXDOMAIN"
+    status: "not_vulnerable"
+
+  # ============================================================================
+  # GitHub
+  # ============================================================================
+  
+  - cname: "github.io"
+    provider: "GitHub Pages"
+    fingerprint: "There isn't a GitHub Pages site here|For root URLs"
+    status: "vulnerable"
+    docs: "https://docs.github.com/pages"
+
+  - cname: "githubusercontent.com"
+    provider: "GitHub Raw Content"
+    fingerprint: "404: Not Found"
+    status: "not_vulnerable"
+
+  # ============================================================================
+  # GitLab
+  # ============================================================================
+  
+  - cname: "gitlab.io"
+    provider: "GitLab Pages"
+    fingerprint: "The page you're looking for could not be found"
+    status: "not_vulnerable"
+
+  # ============================================================================
+  # Heroku
+  # ============================================================================
+  
+  - cname: "herokuapp.com"
+    provider: "Heroku"
+    fingerprint: "No such app|there is no app configured at that hostname|Heroku | No such app"
+    status: "vulnerable"
+    docs: "https://devcenter.heroku.com/"
+
+  - cname: "herokudns.com"
+    provider: "Heroku DNS"
+    fingerprint: "No such app"
+    status: "vulnerable"
+
+  - cname: "herokussl.com"
+    provider: "Heroku SSL"
+    fingerprint: "No such app"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Netlify
+  # ============================================================================
+  
+  - cname: "netlify.app"
+    provider: "Netlify"
+    fingerprint: "Not Found - Request ID|Page Not Found"
+    status: "vulnerable"
+    docs: "https://docs.netlify.com/"
+
+  - cname: "netlify.com"
+    provider: "Netlify (Legacy)"
+    fingerprint: "Not Found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Vercel (Zeit)
+  # ============================================================================
+  
+  - cname: "vercel.app"
+    provider: "Vercel"
+    fingerprint: "The deployment could not be found on Vercel"
+    status: "vulnerable"
+    docs: "https://vercel.com/docs"
+
+  - cname: "now.sh"
+    provider: "Vercel (Now.sh)"
+    fingerprint: "The deployment could not be found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Shopify
+  # ============================================================================
+  
+  - cname: "myshopify.com"
+    provider: "Shopify"
+    fingerprint: "Sorry, this shop is currently unavailable|Only one step left!"
+    status: "edge_case"
+    docs: "https://help.shopify.com/"
+
+  # ============================================================================
+  # Tumblr
+  # ============================================================================
+  
+  - cname: "tumblr.com"
+    provider: "Tumblr"
+    fingerprint: "There's nothing here|Whatever you were looking for doesn't currently exist"
+    status: "vulnerable"
+    docs: "https://www.tumblr.com/"
+
+  # ============================================================================
+  # Ghost
+  # ============================================================================
+  
+  - cname: "ghost.io"
+    provider: "Ghost"
+    fingerprint: "The thing you were looking for is no longer here|Domain is not configured"
+    status: "vulnerable"
+    docs: "https://ghost.org/docs/"
+
+  # ============================================================================
+  # Surge.sh
+  # ============================================================================
+  
+  - cname: "surge.sh"
+    provider: "Surge.sh"
+    fingerprint: "project not found"
+    status: "vulnerable"
+    docs: "https://surge.sh/"
+
+  # ============================================================================
+  # Pantheon
+  # ============================================================================
+  
+  - cname: "pantheonsite.io"
+    provider: "Pantheon"
+    fingerprint: "The gods are wise|404 Unknown Site|The site you requested does not exist"
+    status: "vulnerable"
+    docs: "https://pantheon.io/docs"
+
+  # ============================================================================
+  # Fastly
+  # ============================================================================
+  
+  - cname: "fastly.net"
+    provider: "Fastly CDN"
+    fingerprint: "Fastly error: unknown domain"
+    status: "vulnerable"
+    docs: "https://docs.fastly.com/"
+
+  - cname: "global.fastly.net"
+    provider: "Fastly Global"
+    fingerprint: "Fastly error: unknown domain"
+    status: "vulnerable"
+
+  - cname: "fastlylb.net"
+    provider: "Fastly Load Balancer"
+    fingerprint: "Fastly error: unknown domain"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Zendesk
+  # ============================================================================
+  
+  - cname: "zendesk.com"
+    provider: "Zendesk"
+    fingerprint: "Help Center Closed|This help center no longer exists"
+    status: "vulnerable"
+    docs: "https://support.zendesk.com/"
+
+  # ============================================================================
+  # Unbounce
+  # ============================================================================
+  
+  - cname: "unbounce.com"
+    provider: "Unbounce"
+    fingerprint: "The requested URL was not found on this server|The page you were looking for doesn't exist"
+    status: "vulnerable"
+    docs: "https://unbounce.com/"
+
+  - cname: "unbouncepages.com"
+    provider: "Unbounce Pages"
+    fingerprint: "The requested URL was not found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Statuspage
+  # ============================================================================
+  
+  - cname: "statuspage.io"
+    provider: "Atlassian Statuspage"
+    fingerprint: "You are being redirected|Status page pushed a new note|StatusPage"
+    status: "vulnerable"
+    docs: "https://www.atlassian.com/software/statuspage"
+
+  # ============================================================================
+  # Readme.io
+  # ============================================================================
+  
+  - cname: "readme.io"
+    provider: "Readme.io"
+    fingerprint: "Project doesnt exist|Project not found"
+    status: "vulnerable"
+    docs: "https://readme.com/"
+
+  # ============================================================================
+  # Bitbucket
+  # ============================================================================
+  
+  - cname: "bitbucket.io"
+    provider: "Bitbucket"
+    fingerprint: "Repository not found"
+    status: "vulnerable"
+    docs: "https://bitbucket.org/"
+
+  # ============================================================================
+  # Cargo Collective
+  # ============================================================================
+  
+  - cname: "cargocollective.com"
+    provider: "Cargo"
+    fingerprint: "404 Not Found|Cargo 404"
+    status: "vulnerable"
+    docs: "https://cargo.site/"
+
+  # ============================================================================
+  # Fly.io
+  # ============================================================================
+  
+  - cname: "fly.dev"
+    provider: "Fly.io"
+    fingerprint: "404 Not Found|Application not found"
+    status: "vulnerable"
+    docs: "https://fly.io/docs/"
+
+  - cname: "fly.io"
+    provider: "Fly.io"
+    fingerprint: "404 Not Found|Application not found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Render
+  # ============================================================================
+  
+  - cname: "onrender.com"
+    provider: "Render"
+    fingerprint: "Not Found|Page not found"
+    status: "vulnerable"
+    docs: "https://render.com/docs"
+
+  # ============================================================================
+  # DigitalOcean
+  # ============================================================================
+  
+  - cname: "digitaloceanspaces.com"
+    provider: "DigitalOcean Spaces"
+    fingerprint: "NoSuchBucket|The specified bucket does not exist"
+    status: "vulnerable"
+    docs: "https://docs.digitalocean.com/products/spaces/"
+
+  # ============================================================================
+  # Desk.com (Salesforce)
+  # ============================================================================
+  
+  - cname: "desk.com"
+    provider: "Desk.com"
+    fingerprint: "Please try again or try Desk.com free|Sorry, We Couldn't Find That Page"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Tilda
+  # ============================================================================
+  
+  - cname: "tilda.ws"
+    provider: "Tilda"
+    fingerprint: "Please renew your subscription"
+    status: "vulnerable"
+    docs: "https://tilda.cc/"
+
+  # ============================================================================
+  # WordPress.com
+  # ============================================================================
+  
+  - cname: "wordpress.com"
+    provider: "WordPress.com"
+    fingerprint: "Do you want to register"
+    status: "vulnerable"
+    docs: "https://wordpress.com/"
+
+  # ============================================================================
+  # HubSpot
+  # ============================================================================
+  
+  - cname: "hs-sites.com"
+    provider: "HubSpot"
+    fingerprint: "Domain not found|This page isn't available"
+    status: "vulnerable"
+    docs: "https://www.hubspot.com/"
+
+  - cname: "hubspot.net"
+    provider: "HubSpot CDN"
+    fingerprint: "Domain not found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # LaunchRock
+  # ============================================================================
+  
+  - cname: "launchrock.com"
+    provider: "LaunchRock"
+    fingerprint: "It looks like you may have taken a wrong turn somewhere"
+    status: "vulnerable"
+    docs: "https://www.launchrock.com/"
+
+  # ============================================================================
+  # SmugMug
+  # ============================================================================
+  
+  - cname: "smugmug.com"
+    provider: "SmugMug"
+    fingerprint: "Page Not Found"
+    status: "vulnerable"
+    docs: "https://www.smugmug.com/"
+
+  # ============================================================================
+  # Strikingly
+  # ============================================================================
+  
+  - cname: "s.strikinglydns.com"
+    provider: "Strikingly"
+    fingerprint: "page not found|But if you're looking to build your own website"
+    status: "vulnerable"
+    docs: "https://www.strikingly.com/"
+
+  - cname: "strikingly.com"
+    provider: "Strikingly"
+    fingerprint: "page not found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # UptimeRobot
+  # ============================================================================
+  
+  - cname: "stats.uptimerobot.com"
+    provider: "UptimeRobot"
+    fingerprint: "page not found"
+    status: "vulnerable"
+    docs: "https://uptimerobot.com/"
+
+  # ============================================================================
+  # Webflow
+  # ============================================================================
+  
+  - cname: "proxy.webflow.com"
+    provider: "Webflow"
+    fingerprint: "The page you are looking for doesn't exist or has been moved"
+    status: "vulnerable"
+    docs: "https://webflow.com/"
+
+  - cname: "proxy-ssl.webflow.com"
+    provider: "Webflow (SSL)"
+    fingerprint: "The page you are looking for doesn't exist"
+    status: "vulnerable"
+
+  - cname: "webflow.io"
+    provider: "Webflow"
+    fingerprint: "The page you are looking for doesn't exist"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Campaign Monitor
+  # ============================================================================
+  
+  - cname: "createsend.com"
+    provider: "Campaign Monitor"
+    fingerprint: "Trying to access your account?"
+    status: "vulnerable"
+    docs: "https://www.campaignmonitor.com/"
+
+  # ============================================================================
+  # Acquia
+  # ============================================================================
+  
+  - cname: "acquia-test.co"
+    provider: "Acquia"
+    fingerprint: "The site you are looking for could not be found"
+    status: "vulnerable"
+    docs: "https://www.acquia.com/"
+
+  # ============================================================================
+  # Airee.ru
+  # ============================================================================
+  
+  - cname: "cdn.airee.ru"
+    provider: "Airee"
+    fingerprint: "Ошибка 402. Pair not found"
+    status: "vulnerable"
+
+  # ============================================================================
+  # Anima
+  # ============================================================================
+  
+  - cname: "animaapp.io"
+    provider: "Anima"
+    fingerprint: "Not found - Request ID:|If this is your site"
+    status: "vulnerable"
+    docs: "https://www.animaapp.com/"
+
+  # ============================================================================
+  # Gemfury
+  # ============================================================================
+  
+  - cname: "furyns.com"
+    provider: "Gemfury"
+    fingerprint: "404: This page could not be found"
+    status: "vulnerable"
+    docs: "https://gemfury.com/"
+
+  # ============================================================================
+  # GetResponse
+  # ============================================================================
+  
+  - cname: "gr8.com"
+    provider: "GetResponse"
+    fingerprint: "With GetResponse Landing Pages"
+    status: "vulnerable"
+    docs: "https://www.getresponse.com/"
+
+  # ============================================================================
+  # Intercom
+  # ============================================================================
+  
+  - cname: "custom.intercom.help"
+    provider: "Intercom"
+    fingerprint: "This page is reserved for"
+    status: "vulnerable"
+    docs: "https://www.intercom.com/"
+
+  # ============================================================================
+  # JetBrains YouTrack
+  # ============================================================================
+  
+  - cname: "myjetbrains.com"
+    provider: "JetBrains YouTrack"
+    fingerprint: "is not a registered InCloud YouTrack"
+    status: "vulnerable"
+    docs: "https://www.jetbrains.com/youtrack/"
+
+  # ============================================================================
+  # Kinsta
+  # ============================================================================
+  
+  - cname: "kinsta.cloud"
+    provider: "Kinsta"
+    fingerprint: "No Site For Domain"
+    status: "vulnerable"
+    docs: "https://kinsta.com/"
+
+  # ============================================================================
+  # Landingi
+  # ============================================================================
+  
+  - cname: "landingi.com"
+    provider: "Landingi"
+    fingerprint: "The page could not be found"
+    status: "vulnerable"
+    docs: "https://landingi.com/"
+
+  # ============================================================================
+  # Ngrok
+  # ============================================================================
+  
+  - cname: "ngrok.io"
+    provider: "Ngrok"
+    fingerprint: "Tunnel *.ngrok.io not found|ngrok.io not found"
+    status: "vulnerable"
+    docs: "https://ngrok.com/"
+
+  # ============================================================================
+  # Pingdom
+  # ============================================================================
+  
+  - cname: "stats.pingdom.com"
+    provider: "Pingdom"
+    fingerprint: "Sorry, couldn't find the status page"
+    status: "vulnerable"
+    docs: "https://www.pingdom.com/"
+
+  # ============================================================================
+  # Short.io
+  # ============================================================================
+  
+  - cname: "short.io"
+    provider: "Short.io"
+    fingerprint: "Link does not exist"
+    status: "vulnerable"
+    docs: "https://short.io/"
+
+  # ============================================================================
+  # Smartling
+  # ============================================================================
+  
+  - cname: "smartling.com"
+    provider: "Smartling"
+    fingerprint: "Domain is not configured|The page you are looking for doesn't exist"
+    status: "vulnerable"
+    docs: "https://www.smartling.com/"
+
+  # ============================================================================
+  # Squarespace
+  # ============================================================================
+  
+  - cname: "squarespace.com"
+    provider: "Squarespace"
+    fingerprint: "No Such Account|Website Expired"
+    status: "not_vulnerable"
+    docs: "https://www.squarespace.com/"
+
+  # ============================================================================
+  # Wix
+  # ============================================================================
+  
+  - cname: "wixdns.net"
+    provider: "Wix"
+    fingerprint: "Looks Like This Domain Isn't Connected To A Website Yet"
+    status: "edge_case"
+    docs: "https://www.wix.com/"
+
+  # ============================================================================
+  # Worksites (by Starter)
+  # ============================================================================
+  
+  - cname: "worksites.net"
+    provider: "Worksites"
+    fingerprint: "Hello! Sorry, but the website you're"
+    status: "vulnerable"
+    docs: "https://worksites.net/"
+
+  # ============================================================================
+  # Agile CRM
+  # ============================================================================
+  
+  - cname: "agilecrm.com"
+    provider: "Agile CRM"
+    fingerprint: "Sorry, this page is no longer available"
+    status: "vulnerable"
+    docs: "https://www.agilecrm.com/"
+
+  # ============================================================================
+  # Aha!
+  # ============================================================================
+  
+  - cname: "ideas.aha.io"
+    provider: "Aha!"
+    fingerprint: "There is no portal configured at this address"
+    status: "vulnerable"
+    docs: "https://www.aha.io/"
+
+  # ============================================================================
+  # Feedpress
+  # ============================================================================
+  
+  - cname: "redirect.feedpress.me"
+    provider: "Feedpress"
+    fingerprint: "The feed has not been found"
+    status: "vulnerable"
+    docs: "https://feedpress.com/"
+
+  # ============================================================================
+  # Freshdesk
+  # ============================================================================
+  
+  - cname: "freshdesk.com"
+    provider: "Freshdesk"
+    fingerprint: "There is no helpdesk here|May be this is still fresh"
+    status: "vulnerable"
+    docs: "https://freshdesk.com/"
+
+  # ============================================================================
+  # Helpjuice
+  # ============================================================================
+  
+  - cname: "helpjuice.com"
+    provider: "Helpjuice"
+    fingerprint: "We could not find what you're looking for"
+    status: "vulnerable"
+    docs: "https://helpjuice.com/"
+
+  # ============================================================================
+  # Helpscout
+  # ============================================================================
+  
+  - cname: "helpscoutdocs.com"
+    provider: "Help Scout"
+    fingerprint: "No settings were found for this company"
+    status: "vulnerable"
+    docs: "https://www.helpscout.com/"
+
+  # ============================================================================
+  # Kayako
+  # ============================================================================
+  
+  - cname: "kayako.com"
+    provider: "Kayako"
+    fingerprint: "kayako"
+    status: "not_vulnerable"
+    docs: "https://www.kayako.com/"
+
+  # ============================================================================
+  # Tave
+  # ============================================================================
+  
+  - cname: "clientaccess.tave.com"
+    provider: "Tave"
+    fingerprint: "<h1>Error 404: Page Not Found</h1>"
+    status: "vulnerable"
+    docs: "https://tave.com/"
+
+  # ============================================================================
+  # Teamwork
+  # ============================================================================
+  
+  - cname: "teamwork.com"
+    provider: "Teamwork"
+    fingerprint: "Oops - We didn't find your site"
+    status: "vulnerable"
+    docs: "https://www.teamwork.com/"
+
+  # ============================================================================
+  # Tictail
+  # ============================================================================
+  
+  - cname: "tictail.com"
+    provider: "Tictail"
+    fingerprint: "to target URL: <a href=\"https://tictail.com|Building a brand"
+    status: "vulnerable"
+
+  # ============================================================================
+  # UserVoice
+  # ============================================================================
+  
+  - cname: "uservoice.com"
+    provider: "UserVoice"
+    fingerprint: "This UserVoice subdomain is currently available!"
+    status: "vulnerable"
+    docs: "https://www.uservoice.com/"
+
+  # ============================================================================
+  # Wishpond
+  # ============================================================================
+  
+  - cname: "wishpond.com"
+    provider: "Wishpond"
+    fingerprint: "https://www.wishpond.com/404|profile not found"
+    status: "vulnerable"
+    docs: "https://www.wishpond.com/"
+
