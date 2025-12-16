@@ -340,7 +340,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you find this project useful and want to support its development, you can tip the author via **Bitcoin Silent Payments (BIP352)**:
 
 <p align="center">
-  <img src="bitcoin-github-QR.jpg" alt="Bitcoin Silent Payments QR Code" width="250">
+  <img src="https://github.com/user-attachments/assets/9768054a-19c0-48fb-b799-090aad40f82c"
+       alt="Bitcoin Silent Payments QR Code"
+       width="180">
 </p>
 
 **Silent Payments address:** 
@@ -375,5 +377,6 @@ For the most up-to-date list of wallets (and whether they support send/receive),
   <a href="https://github.com/W4RRR/subtake/issues">🐛 Report Bug</a> •
   <a href="https://github.com/W4RRR/subtake/pulls">🔀 Submit PR</a>
 </p>
+
 
 
