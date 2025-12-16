@@ -339,6 +339,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you find this project useful and want to support its development, you can tip the author via **Bitcoin Silent Payments (BIP352)**:
 
+<p align="center">
+  <img src="bitcoin-github-QR.jpg" alt="Bitcoin Silent Payments QR Code" width="250">
+</p>
+
 **Silent Payments address:** 
 ```
 sp1qqdsmxsvc6payn6kxmyjuwk6zcjcq7vpgkek7tf3y78tfaksahacxcqenuvqptufl7a6gwtwe5zdsf4pu578ykfdtxp789ca4nxgcawp4057852s6
