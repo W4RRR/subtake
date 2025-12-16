@@ -101,8 +101,12 @@ log() {
     local timestamp
     timestamp="$(date '+%H:%M:%S')"
     
-    # Always log to file if RUNLOG is set
-    [[ -n "${RUNLOG:-}" ]] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $msg" >> "$RUNLOG"
+    # Always log to file if RUNLOG is set (strip ANSI codes for clean log)
+    if [[ -n "${RUNLOG:-}" ]]; then
+        local clean_msg
+        clean_msg="$(echo -e "$msg" | sed 's/\x1b\[[0-9;]*m//g')"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $clean_msg" >> "$RUNLOG"
+    fi
     
     # Silent mode: only show VULN, ERROR and final summary
     if [[ "${SILENT:-0}" == "1" ]]; then
@@ -714,10 +718,19 @@ run_automated_scan() {
         
         rm -f "$hosts_file"
         
+        # Check if output is valid (not empty, not "null")
         if [[ -f "$output" ]] && [[ -s "$output" ]]; then
-            local vuln_count
-            vuln_count="$(grep -c "VULNERABLE" "$output" 2>/dev/null || echo 0)"
-            log OK "Subzy found ${BOLD}$vuln_count${RESET} potential vulnerabilities"
+            local content
+            content="$(cat "$output" | tr -d '[:space:]')"
+            if [[ "$content" != "null" ]] && [[ -n "$content" ]]; then
+                local vuln_count
+                vuln_count="$(grep -c "VULNERABLE" "$output" 2>/dev/null | tr -d '[:space:]')" || vuln_count=0
+                [[ -z "$vuln_count" ]] && vuln_count=0
+                log OK "Subzy found ${BOLD}${vuln_count}${RESET} potential vulnerabilities"
+            else
+                log WARN "Subzy found no results"
+                echo "" > "$output"
+            fi
         else
             log WARN "Subzy found no results"
             touch "$output"
@@ -912,12 +925,21 @@ generate_reports() {
         echo "  },"
         echo "  \"results\": ["
         
-        local first=true
-        tail -n +2 "$results_file" | while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
-            [[ "$first" == "true" ]] && first=false || echo ","
+        local first_entry=true
+        while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
+            if [[ "$first_entry" == "true" ]]; then
+                first_entry=false
+            else
+                echo ","
+            fi
+            # Escape special characters in JSON strings
+            subdomain="${subdomain//\"/\\\"}"
+            cname="${cname//\"/\\\"}"
+            provider="${provider//\"/\\\"}"
+            reasons="${reasons//\"/\\\"}"
             printf '    {"subdomain": "%s", "cname": "%s", "provider": "%s", "http_code": "%s", "nxdomain": %s, "score": %d, "status": "%s", "reasons": "%s"}' \
-                "$subdomain" "$cname" "$provider" "$http_code" "$nxdomain" "$score" "$status" "$reasons"
-        done
+                "$subdomain" "$cname" "$provider" "$http_code" "${nxdomain:-false}" "${score:-0}" "$status" "$reasons"
+        done < <(tail -n +2 "$results_file" 2>/dev/null)
         
         echo ""
         echo "  ]"
@@ -936,31 +958,37 @@ generate_reports() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SubTake Flow - Scan Report</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
         
         :root {
-            --bg-dark: #0a0e17;
-            --bg-card: #111827;
-            --accent-red: #ef4444;
-            --accent-yellow: #f59e0b;
-            --accent-green: #10b981;
-            --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --border: #1f2937;
+            --bg-dark: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --bg-card-hover: #252542;
+            --accent-red: #ff4757;
+            --accent-yellow: #ffa502;
+            --accent-green: #2ed573;
+            --accent-blue: #3742fa;
+            --accent-cyan: #00d2d3;
+            --accent-purple: #a855f7;
+            --text-primary: #f1f1f1;
+            --text-secondary: #8b8b9a;
+            --border: #2d2d44;
+            --glow-blue: rgba(55, 66, 250, 0.3);
+            --glow-purple: rgba(168, 85, 247, 0.3);
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-dark);
             color: var(--text-primary);
             min-height: 100vh;
             background-image: 
-                radial-gradient(ellipse at top, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+                radial-gradient(ellipse at 20% 0%, var(--glow-blue) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, var(--glow-purple) 0%, transparent 50%),
+                linear-gradient(180deg, var(--bg-dark) 0%, #0a0a12 100%);
+            background-attachment: fixed;
         }
         
         .container {
@@ -971,38 +999,75 @@ generate_reports() {
         
         .header {
             text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.1) 100%);
-            border-radius: 1rem;
+            margin-bottom: 2.5rem;
+            padding: 2.5rem 2rem;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(55, 66, 250, 0.1) 100%);
+            border-radius: 1.25rem;
             border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
         }
         
         .logo {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.5rem;
-            color: var(--accent-blue);
-            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            margin-bottom: 1.5rem;
             white-space: pre;
-            line-height: 1.2;
+            line-height: 1.15;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 20px rgba(0, 210, 211, 0.3);
         }
         
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+        .brand-name {
+            font-size: 2.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 50%, var(--accent-purple) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+        
+        .brand-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .author {
+            font-size: 0.85rem;
+            color: var(--accent-purple);
+            font-weight: 500;
         }
         
         .meta {
             color: var(--text-secondary);
             font-size: 0.9rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        
+        .meta strong {
+            color: var(--accent-cyan);
         }
         
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
@@ -1010,100 +1075,182 @@ generate_reports() {
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 0.75rem;
+            border-radius: 1rem;
             padding: 1.5rem;
             text-align: center;
-            transition: transform 0.2s, border-color 0.2s;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
         }
         
         .stat-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--accent-blue);
+            transform: translateY(-4px);
+            background: var(--bg-card-hover);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
         
-        .stat-card.critical { border-left: 4px solid var(--accent-red); }
-        .stat-card.high { border-left: 4px solid var(--accent-yellow); }
-        .stat-card.medium { border-left: 4px solid var(--accent-blue); }
-        .stat-card.low { border-left: 4px solid var(--accent-green); }
+        .stat-card.critical::before { background: var(--accent-red); }
+        .stat-card.high::before { background: var(--accent-yellow); }
+        .stat-card.medium::before { background: var(--accent-blue); }
+        .stat-card.low::before { background: var(--accent-green); }
         
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 3rem;
             font-weight: 700;
             margin-bottom: 0.25rem;
+            line-height: 1;
         }
         
-        .stat-card.critical .stat-value { color: var(--accent-red); }
-        .stat-card.high .stat-value { color: var(--accent-yellow); }
-        .stat-card.medium .stat-value { color: var(--accent-blue); }
-        .stat-card.low .stat-value { color: var(--accent-green); }
+        .stat-card.critical .stat-value { color: var(--accent-red); text-shadow: 0 0 20px rgba(255, 71, 87, 0.4); }
+        .stat-card.high .stat-value { color: var(--accent-yellow); text-shadow: 0 0 20px rgba(255, 165, 2, 0.4); }
+        .stat-card.medium .stat-value { color: var(--accent-blue); text-shadow: 0 0 20px rgba(55, 66, 250, 0.4); }
+        .stat-card.low .stat-value { color: var(--accent-green); text-shadow: 0 0 20px rgba(46, 213, 115, 0.4); }
         
         .stat-label {
             color: var(--text-secondary);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+        
+        .results-section {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+        
+        .results-header {
+            padding: 1rem 1.5rem;
+            background: rgba(55, 66, 250, 0.1);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .results-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .results-count {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
         }
         
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            background: var(--bg-card);
-            border-radius: 0.75rem;
-            overflow: hidden;
-            border: 1px solid var(--border);
         }
         
         .results-table th {
-            background: rgba(59, 130, 246, 0.1);
-            padding: 1rem;
+            background: transparent;
+            padding: 1rem 1.25rem;
             text-align: left;
             font-weight: 600;
-            color: var(--accent-blue);
-            border-bottom: 2px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
             cursor: pointer;
             user-select: none;
+            transition: color 0.2s;
         }
         
         .results-table th:hover {
-            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-cyan);
         }
         
         .results-table td {
-            padding: 0.75rem 1rem;
+            padding: 1rem 1.25rem;
             border-bottom: 1px solid var(--border);
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.85rem;
         }
         
         .results-table tr:hover {
-            background: rgba(59, 130, 246, 0.05);
+            background: rgba(55, 66, 250, 0.05);
+        }
+        
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .subdomain-cell {
+            color: var(--accent-cyan);
+            font-weight: 500;
+        }
+        
+        .cname-cell {
+            color: var(--text-secondary);
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         .status-badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
+            padding: 0.35rem 0.85rem;
             border-radius: 9999px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         
-        .status-VULNERABLE { background: var(--accent-red); color: white; }
-        .status-HIGH { background: var(--accent-yellow); color: black; }
-        .status-MEDIUM { background: var(--accent-blue); color: white; }
-        .status-LOW { background: var(--bg-dark); color: var(--text-secondary); border: 1px solid var(--border); }
+        .status-VULNERABLE { 
+            background: rgba(255, 71, 87, 0.2); 
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+        .status-HIGH { 
+            background: rgba(255, 165, 2, 0.2); 
+            color: var(--accent-yellow);
+            border: 1px solid var(--accent-yellow);
+        }
+        .status-MEDIUM { 
+            background: rgba(55, 66, 250, 0.2); 
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+        }
+        .status-LOW { 
+            background: rgba(46, 213, 115, 0.1); 
+            color: var(--accent-green);
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+        
+        .score-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
         
         .score-bar {
-            width: 100px;
-            height: 8px;
-            background: var(--bg-dark);
-            border-radius: 4px;
+            width: 80px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
             overflow: hidden;
         }
         
         .score-fill {
             height: 100%;
-            border-radius: 4px;
+            border-radius: 3px;
             transition: width 0.3s ease;
         }
         
@@ -1111,17 +1258,57 @@ generate_reports() {
         .score-fill.medium { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-blue)); }
         .score-fill.low { background: var(--accent-green); }
         
+        .score-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            min-width: 35px;
+        }
+        
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.25rem;
+            color: var(--accent-green);
+            margin-bottom: 0.5rem;
+        }
+        
+        .empty-state p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
         .footer {
             text-align: center;
             margin-top: 2rem;
-            padding: 1rem;
+            padding: 1.5rem;
             color: var(--text-secondary);
             font-size: 0.8rem;
         }
         
+        .footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer a:hover {
+            color: var(--accent-purple);
+        }
+        
         @media (max-width: 768px) {
             .container { padding: 1rem; }
+            .logo { font-size: 0.6rem; }
+            .brand-name { font-size: 2rem; }
             .results-table { display: block; overflow-x: auto; }
+            .stat-value { font-size: 2.25rem; }
         }
     </style>
 </head>
@@ -1129,96 +1316,139 @@ generate_reports() {
     <div class="container">
         <header class="header">
             <div class="logo">
- ___       _   _____     _
-/ __> _ _ | |_|_   _|___| |_ ___
-\__ \| | || . | | | <_> | / / ._>
-<___/`___||___| |_| <___|_\_\___.</div>
-            <h1>Subdomain Takeover Report</h1>
+   _____       __  ______      __
+  / ___/__  __/ /_/_  __/___ _/ /_____
+  \__ \/ / / / __ \/ / / __ `/ //_/ _ \
+ ___/ / /_/ / /_/ / / / /_/ / ,< /  __/
+/____/\__,_/_.___/_/  \__,_/_/|_|\___/
+   ________
+  / ____/ /___ _      __
+ / /_  / / __ \ | /| / /
+/ __/ / / /_/ / |/ |/ /
+/_/   /_/\____/|__/|__/</div>
+            <h1 class="brand-name">SubTake Flow</h1>
+            <p class="brand-subtitle">Subdomain Takeover Scanner</p>
+            <p class="author">by .W4R</p>
 HTMLHEAD
 
     # Add scan metadata
     echo "            <p class=\"meta\">Domain: <strong>$DOMAIN</strong> | Scanned: $(date '+%Y-%m-%d %H:%M:%S') | Version: $VERSION</p>" >> "$html_file"
     echo "        </header>" >> "$html_file"
     
-    # Calculate stats
+    # Calculate stats (ensure clean numbers without newlines)
     local total vuln_count high_count medium_count low_count
-    total=$(($(wc -l < "$results_file") - 1))
-    vuln_count=$(grep -c "VULNERABLE" "$results_file" 2>/dev/null || echo 0)
-    high_count=$(grep -c $'\tHIGH\t' "$results_file" 2>/dev/null || echo 0)
-    medium_count=$(grep -c $'\tMEDIUM\t' "$results_file" 2>/dev/null || echo 0)
-    low_count=$(grep -c $'\tLOW\t' "$results_file" 2>/dev/null || echo 0)
+    total=$(( $(wc -l < "$results_file" | tr -d '[:space:]') - 1 ))
+    [[ $total -lt 0 ]] && total=0
+    vuln_count=$(grep -c "VULNERABLE" "$results_file" 2>/dev/null | tr -d '[:space:]') || vuln_count=0
+    [[ -z "$vuln_count" ]] && vuln_count=0
+    high_count=$(grep -c $'\tHIGH\t' "$results_file" 2>/dev/null | tr -d '[:space:]') || high_count=0
+    [[ -z "$high_count" ]] && high_count=0
+    medium_count=$(grep -c $'\tMEDIUM\t' "$results_file" 2>/dev/null | tr -d '[:space:]') || medium_count=0
+    [[ -z "$medium_count" ]] && medium_count=0
+    low_count=$(grep -c $'\tLOW\t' "$results_file" 2>/dev/null | tr -d '[:space:]') || low_count=0
+    [[ -z "$low_count" ]] && low_count=0
     
     # Stats cards
     cat >> "$html_file" << HTMLSTATS
         <div class="stats">
             <div class="stat-card critical">
-                <div class="stat-value">$vuln_count</div>
+                <div class="stat-value">${vuln_count}</div>
                 <div class="stat-label">Vulnerable</div>
             </div>
             <div class="stat-card high">
-                <div class="stat-value">$high_count</div>
-                <div class="stat-label">High Probability</div>
+                <div class="stat-value">${high_count}</div>
+                <div class="stat-label">High Risk</div>
             </div>
             <div class="stat-card medium">
-                <div class="stat-value">$medium_count</div>
-                <div class="stat-label">Medium</div>
+                <div class="stat-value">${medium_count}</div>
+                <div class="stat-label">Medium Risk</div>
             </div>
             <div class="stat-card low">
-                <div class="stat-value">$low_count</div>
-                <div class="stat-label">Low</div>
+                <div class="stat-value">${low_count}</div>
+                <div class="stat-label">Low Risk</div>
             </div>
         </div>
         
-        <table class="results-table">
-            <thead>
-                <tr>
-                    <th onclick="sortTable(0)">Subdomain</th>
-                    <th onclick="sortTable(1)">CNAME</th>
-                    <th onclick="sortTable(2)">Provider</th>
-                    <th onclick="sortTable(3)">HTTP</th>
-                    <th onclick="sortTable(4)">Score</th>
-                    <th onclick="sortTable(5)">Status</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="results-section">
+            <div class="results-header">
+                <h2>📊 Scan Results</h2>
+                <span class="results-count">${total} CNAME records analyzed</span>
+            </div>
 HTMLSTATS
 
-    # Add table rows
-    tail -n +2 "$results_file" | sort -t$'\t' -k6 -nr | while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
-        local score_class="low"
-        [[ $score -ge 40 ]] && score_class="medium"
-        [[ $score -ge 70 ]] && score_class="high"
-        
-        cat >> "$html_file" << HTMLROW
-                <tr>
-                    <td>$subdomain</td>
-                    <td title="$cname">${cname:0:50}...</td>
-                    <td>$provider</td>
-                    <td>$http_code</td>
-                    <td>
-                        <div class="score-bar">
-                            <div class="score-fill $score_class" style="width: ${score}%"></div>
-                        </div>
-                        <small>$score%</small>
-                    </td>
-                    <td><span class="status-badge status-$status">$status</span></td>
-                </tr>
+    # Check if there are results to display
+    if [[ $total -gt 0 ]]; then
+        cat >> "$html_file" << 'HTMLTABLE'
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">↕ Subdomain</th>
+                        <th onclick="sortTable(1)">↕ CNAME Target</th>
+                        <th onclick="sortTable(2)">↕ Provider</th>
+                        <th onclick="sortTable(3)">↕ HTTP</th>
+                        <th onclick="sortTable(4)">↕ Score</th>
+                        <th onclick="sortTable(5)">↕ Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+HTMLTABLE
+
+        # Add table rows
+        tail -n +2 "$results_file" | sort -t$'\t' -k6 -nr | while IFS=$'\t' read -r subdomain cname provider http_code nxdomain score status reasons; do
+            local score_class="low"
+            [[ $score -ge 40 ]] && score_class="medium"
+            [[ $score -ge 70 ]] && score_class="high"
+            
+            # Truncate CNAME if too long
+            local cname_display="${cname}"
+            [[ ${#cname} -gt 45 ]] && cname_display="${cname:0:42}..."
+            
+            cat >> "$html_file" << HTMLROW
+                    <tr>
+                        <td class="subdomain-cell">${subdomain}</td>
+                        <td class="cname-cell" title="${cname}">${cname_display}</td>
+                        <td>${provider}</td>
+                        <td>${http_code}</td>
+                        <td>
+                            <div class="score-cell">
+                                <div class="score-bar">
+                                    <div class="score-fill ${score_class}" style="width: ${score}%"></div>
+                                </div>
+                                <span class="score-text">${score}%</span>
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-${status}">${status}</span></td>
+                    </tr>
 HTMLROW
-    done
+        done
+
+        echo "                </tbody>" >> "$html_file"
+        echo "            </table>" >> "$html_file"
+    else
+        # Empty state - no results
+        cat >> "$html_file" << 'HTMLEMPTY'
+            <div class="empty-state">
+                <div class="empty-state-icon">✅</div>
+                <h3>No Vulnerable Subdomains Found</h3>
+                <p>No CNAME records pointing to potentially vulnerable services were detected.<br>This is a good sign! Your subdomains appear to be properly configured.</p>
+            </div>
+HTMLEMPTY
+    fi
 
     # Close HTML
     cat >> "$html_file" << 'HTMLFOOT'
-            </tbody>
-        </table>
+        </div>
         
         <footer class="footer">
-            <p>Generated by SubTake Flow v2.0.0 | https://github.com/W4RRR/subtake</p>
+            <p>Generated by <strong>SubTake Flow v2.0.0</strong> by .W4R</p>
+            <p><a href="https://github.com/W4RRR/subtake" target="_blank">github.com/W4RRR/subtake</a></p>
         </footer>
     </div>
     
     <script>
         function sortTable(n) {
             const table = document.querySelector('.results-table');
+            if (!table) return;
             const rows = Array.from(table.querySelectorAll('tbody tr'));
             const isNumeric = n === 3 || n === 4;
             
@@ -1235,6 +1465,19 @@ HTMLROW
             const tbody = table.querySelector('tbody');
             rows.forEach(row => tbody.appendChild(row));
         }
+        
+        // Add animation on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.stat-card').forEach((card, i) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.4s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, i * 100);
+            });
+        });
     </script>
 </body>
 </html>
@@ -1581,4 +1824,5 @@ main() {
 
 # Run main function
 main "$@"
+
 
