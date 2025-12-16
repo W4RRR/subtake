@@ -110,8 +110,8 @@ brew install parallel      # macOS
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/subtake-flow.git
-cd subtake-flow
+git clone https://github.com/W4RRR/subtake.git
+cd subtake
 
 # Make executable
 chmod +x subtake.sh
@@ -332,8 +332,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR_USERNAME/subtake-flow/stargazers">⭐ Star this repo</a> •
-  <a href="https://github.com/YOUR_USERNAME/subtake-flow/issues">🐛 Report Bug</a> •
-  <a href="https://github.com/YOUR_USERNAME/subtake-flow/pulls">🔀 Submit PR</a>
+  <a href="https://github.com/W4RRR/subtake/stargazers">⭐ Star this repo</a> •
+  <a href="https://github.com/W4RRR/subtake/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/W4RRR/subtake/pulls">🔀 Submit PR</a>
 </p>
 
